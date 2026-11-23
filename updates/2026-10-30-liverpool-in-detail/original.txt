@@ -1,0 +1,53 @@
+Liverpool, in detail.
+
+30 October 2026 · Red Half Lab
+
+A supporter’s project to help fans understand the team and its players through data.
+
+Red Half Lab · Project overview
+
+Red Half Lab brings a Liverpool supporter’s football data projects into one place. REDS develops next-match reports and wider player comparisons. Match Pulse is a separate research project into form, cards and match style. Both aim to make a football question easier to examine, while keeping the limits of the evidence visible.
+
+Why the project exists
+
+A discussion about a player can contain several questions at once. Contribution to a passing structure, progression with the ball and regaining possession describe different parts of a performance. A useful report makes clear which part is being assessed.
+
+The project was started by a Liverpool supporter to help fellow fans and the wider Liverpool community understand the team and its players. Its value will depend on whether the explanations help people look more closely at the football.
+
+What REDS covers
+
+REDS addresses Liverpool’s next Premier League match and a separate set of wider fan questions. Team reports cover score, result and match dominance. Player reports explore contributions such as passing, progression and regaining possession. Goalkeeper reports examine shot threat and interventions around the box.
+
+Player forecasts are conditional on the player appearing. Coverage and evidence vary, and attacking contribution remains experimental. The individual report gives the conditions and limitations for its answer.
+
+The fan notebook investigates questions beyond one fixture. Existing examples include Van Dijk’s duels across periods, Wirtz and Szoboszlai in the number-ten role, and Frimpong in defensive and attacking roles. Those comparisons ask specific football questions; listing a player does not mean every task has a supported answer for them.
+
+Explore REDS reports and questions ↗ (https://redhalflab.com/reds)
+
+Where Match Pulse fits
+
+Match Pulse studies single-match and three-match form, red and yellow cards, and patterns of play. Its public tracker shares verified aggregate research progress and dated comparisons.
+
+Historical replays and genuine pre-match records remain separate. The current record does not establish live reliability, and individual match forecasts remain private. The aim is to make the development record inspectable as the research continues.
+
+Follow Match Pulse research ↗ (https://redhalflab.com/research/match-pulse)
+
+How to read the work
+
+A model result needs a reference point. Historical checks compare a model with a simple baseline on the same task. Those checks are evidence about a defined evaluation; they are not a guarantee for the next match or an overall live accuracy.
+
+A dated pre-match record can later be checked against available outcomes. Missing evidence remains pending. New evidence belongs in later forecasts, while the earlier record stays intact.
+
+This introduction sets out the project’s scope. It does not announce a newly trained model or a measured improvement. The next stage is to build a longer genuine pre-match record and improve reports where evidence is incomplete.
+
+Follow the questions
+
+The main website holds the reports and research tracker. These project pages collect introductions, dated notes and shareable cards. Supporters can follow development, inspect what a report says and bring more specific questions back to the work.
+
+Red Half Lab is independent of Liverpool Football Club. The models and reports are still developing.
+
+Main website ↗ (https://redhalflab.com/)
+
+Follow on X ↗ (https://x.com/REDSdataml4)
+
+Project cards → (https://liv-ynwa.github.io/redadv/resources/index.html)

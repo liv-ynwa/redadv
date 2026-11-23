@@ -18,6 +18,6 @@ The [native components](components/match-pulse.js) use [components.css](styles/c
 
 ## Source editions
 
-The original [Match Pulse research release](archives/matchpulse-2026-10-28/) and [Red Half Lab website](archives/redhalflabdata-2026-10-30/) retain their files and Git history. The original research dataset, schema and checksum remain available at their previous repository paths. The CC BY 4.0 [licence](LICENSE.txt) covers the original aggregate research status and its documentation. The original website address forwards readers to the corresponding redadv pages.
+The [original research release](archives/matchpulse-2026-10-28/) and the [October artwork files](archives/redhalflabdata-2026-10-30/assets/cards/) retain their addresses. Design updates replace the site at its existing URLs. Earlier website addresses lead to the current pages. The original research dataset, schema and checksum remain available at their previous repository paths. The CC BY 4.0 [licence](LICENSE.txt) covers the original aggregate research status and its documentation. The original website address forwards readers to the corresponding redadv pages.
 
 [Red Half Lab blog](https://redhalflab.com/en/blog) · [REDS reports](https://redhalflab.com/en/reds)

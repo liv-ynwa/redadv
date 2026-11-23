@@ -654,8 +654,8 @@
     }).join('');
     const dots = unit==='%' ? history.map((h,i) => {
       if (h.future) return '';
-      const fill = valid(h.observed) ? (h.observed > 0 ? '#327754' : 'white') : '#d8d6d1';
-      return `<circle cx="${x(i)}" cy="198" r="4" fill="${fill}" stroke="${valid(h.observed)?'#537660':'#b4b2aa'}"/>`;
+      const fill = valid(h.observed) ? (h.observed > 0 ? '#00796f' : 'white') : '#ddd4d6';
+      return `<circle cx="${x(i)}" cy="198" r="4" fill="${fill}" stroke="${valid(h.observed)?'#0b5d56':'#b5a7ab'}"/>`;
     }).join('') : '';
     return `<div class="mp-linechart"><div class="mp-legend">${legend}</div>
       <div class="mp-plot" style="--mp-probe-x:${x(selected)/width*100}%">
@@ -1058,13 +1058,13 @@
     const x=i=>36+i*525/played.length, y=v=>113-Math.max(0,Math.min(100,v));
     const last=played.at(-1), end=x(played.length);
     const lines=[0,50,100].map(t=>`<line x1="32" x2="576" y1="${y(t)}" y2="${y(t)}" class="mp-gridline"/><text x="25" y="${y(t)+3}" text-anchor="end">${t}</text>`).join('');
-    const band=r.window?.length===2&&r.window.every(valid)?`<rect x="${end-12}" width="24" y="${y(r.window[1])}" height="${Math.max(1,y(r.window[0])-y(r.window[1]))}" fill="#9ec5a2"/>`:'';
-    const dots=played.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h.value)}" r="3" fill="#374d40"><title>${esc(h.date+' vs '+h.opponent+' · '+pointText(h.value))}</title></circle>`).join('');
+    const band=r.window?.length===2&&r.window.every(valid)?`<rect x="${end-12}" width="24" y="${y(r.window[1])}" height="${Math.max(1,y(r.window[0])-y(r.window[1]))}" fill="#bce6e0"/>`:'';
+    const dots=played.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h.value)}" r="3" fill="#480a19"><title>${esc(h.date+' vs '+h.opponent+' · '+pointText(h.value))}</title></circle>`).join('');
     return `<figure class="mp-form-trend"><figcaption><b>Team form trend</b><small>Actual form / ${scope==='three'?'Three-match forecast':'Next forecast'}</small></figcaption>
       <svg viewBox="0 0 600 140" role="img" aria-label="Completed match scores and the current forecast">${lines}${band}
-      <polyline points="${played.map((h,i)=>x(i)+','+y(h.value)).join(' ')}" stroke="#374d40" stroke-width="2.4" fill="none"/>
-      <path d="M${x(played.length-1)} ${y(last.value)} L${end} ${y(r.point)}" fill="none" stroke="#18755a" stroke-width="2.5" stroke-dasharray="4 4"/>
-      ${dots}<circle cx="${end}" cy="${y(r.point)}" r="4" fill="#14644c"/><text x="36" y="133">${esc(played[0].date.slice(5))}</text>
+      <polyline points="${played.map((h,i)=>x(i)+','+y(h.value)).join(' ')}" stroke="#480a19" stroke-width="2.4" fill="none"/>
+      <path d="M${x(played.length-1)} ${y(last.value)} L${end} ${y(r.point)}" fill="none" stroke="#00796f" stroke-width="2.5" stroke-dasharray="4 4"/>
+      ${dots}<circle cx="${end}" cy="${y(r.point)}" r="4" fill="#00796f"/><text x="36" y="133">${esc(played[0].date.slice(5))}</text>
       <text x="580" y="133" text-anchor="end">${scope==='three'?'Three-match average':'Next match'}</text></svg></figure>
       ${disclosure('Form scores by match',table(['Match','Horizon','Form score'],[...played.map(h=>[esc(h.date+' vs '+h.opponent),'Match result',pointText(h.value)]),[esc(fixturesText(r.fixtures)),scope==='three'?'Three-match forecast':'Next forecast',pointText(r.point)]]))}`;
   }
