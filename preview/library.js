@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const {icon,showDialog,closeDialog}=window.MatchPulseUI;
+  const {icon,showDialog,closeDialog}=window.RedadvUI;
   const publishedFeed=document.documentElement.dataset.publishedFeed;
   const components=[
     {key:'matchday',name:'Match centre',group:'Pre-match',text:'Browse fixtures, forecasts and final scores across competitions.',read:s=>(s.matchday)},
@@ -249,7 +249,7 @@
             publishedLabel=label+' · '+publication.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'})+' UTC+8';
             usePublishedEdition();
           }
-        }else applyEdition(window.MatchPulseUI.englishData(source));
+        }else applyEdition(window.RedadvUI.englishData(source));
         etag=response.headers.get('ETag');
       }else if(publishedEdition && cutoff && cutoff*1000<=Date.now())usePublishedEdition();
       document.body.classList.remove('feed-unavailable','feed-loading');
@@ -271,7 +271,7 @@
   if(location.protocol==='file:'){
     const script=document.createElement('script');
     script.onerror=()=>badge('Offline sample unavailable');
-    script.src='./preview/snapshot.js';script.onload=()=>{update(window.MatchPulseUI.englishData(window.MatchPulseSample));document.body.classList.remove('feed-loading');badge('Offline sample · 2026-11-21');};
+    script.src='./preview/snapshot.js';script.onload=()=>{update(window.RedadvUI.englishData(window.MatchPulseSample));document.body.classList.remove('feed-loading');badge('Offline sample · 2026-11-21');};
     document.head.append(script);
   }else{
     refresh();

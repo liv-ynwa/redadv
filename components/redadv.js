@@ -1214,5 +1214,5 @@
   for(const [tag,ctor] of Object.entries({matchday:Matchday,calibration:Calibration,archive:Archive,match:Match,players:Players,trajectory:Trajectory,form:Form,review:Review,discipline:Discipline,defense:Defense,keeper:Keeper,style:Style})){
     if(!customElements.get('mp-'+tag))customElements.define('mp-'+tag,ctor);
   }
-  window.MatchPulseUI={icon,profile,showDialog,closeDialog,englishData};
+  window.RedadvUI=window.MatchPulseUI={icon,profile,showDialog,closeDialog,englishData};
 })();

@@ -2,7 +2,7 @@
 
 An independent Liverpool matchday component library by Red Half Lab.
 
-[Open the components](https://liv-ynwa.github.io/redadv/) · [Reports](https://liv-ynwa.github.io/redadv/updates/) · [Project cards](https://liv-ynwa.github.io/redadv/resources/)
+[Open the components](https://liv-ynwa.github.io/redadv/) · [Reports](https://liv-ynwa.github.io/redadv/reports/) · [Project cards](https://liv-ynwa.github.io/redadv/project-cards/)
 
 ## Matchday components
 
@@ -14,10 +14,12 @@ The site reads the dated public edition in [data/matchday.json](data/matchday.js
 
 From the repository root, run `python3 -m http.server 8000` and open [the library](http://localhost:8000/). GitHub Pages serves the same files from the root of the main branch.
 
-The [native components](components/match-pulse.js) use [components.css](styles/components.css). To embed a component in Astro, use [MatchPulse.astro](components/MatchPulse.astro). Fonts and their licences are in [assets/fonts](assets/fonts).
+The [native components](components/redadv.js) use [components.css](styles/components.css). To embed a component in Astro, use [MatchPulse.astro](components/Redadv.astro). Fonts and their licences are in [assets/fonts](assets/fonts).
 
-## Source editions
+## Project files
 
-The [original research release](archives/matchpulse-2026-10-28/) and the [October artwork files](archives/redhalflabdata-2026-10-30/assets/cards/) retain their addresses. Design updates replace the site at its existing URLs. Earlier website addresses lead to the current pages. The original research dataset, schema and checksum remain available at their previous repository paths. The CC BY 4.0 [licence](LICENSE.txt) covers the original aggregate research status and its documentation. The original website address forwards readers to the corresponding redadv pages.
+The site has three pages: the [component library](index.html), [reports](reports/index.html) and [project cards](project-cards/index.html). Artwork downloads live in [assets/project-cards](assets/project-cards/). The shared 404 page forwards bookmarks from former site paths.
+
+The root [licence](LICENSE.txt) covers the original aggregate research dataset and its documentation.
 
 [Red Half Lab blog](https://redhalflab.com/en/blog) · [REDS reports](https://redhalflab.com/en/reds)

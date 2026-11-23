@@ -1,1 +1,30 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found · redadv</title><link rel="stylesheet" href="/redadv/styles/library.css"></head><body class="kit"><main class="wrap"><h1>Page not found</h1><p><a href="https://liv-ynwa.github.io/redadv/">Browse matchday components</a></p></main></body></html>
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Page not found · redadv</title>
+<script>
+  // GitHub Pages serves this document at the requested URL, including old bookmarks.
+  const root = location.hostname === 'liv-ynwa.github.io' ? '/redadv/' : '/';
+  const path = location.pathname.replace(/^\/(?:redadv|redhalflabdata)(?=\/|$)/, '')
+    .replace(/^\/archives\/redhalflabdata-2026-10-30(?=\/|$)/, '')
+    .replace(/\/index\.html$/, '/').replace(/\/$/, '');
+  const pages = new Map([
+    ['', ''], ['/resources', 'project-cards/'], ['/match-pulse', '#form'],
+    ['/reds', 'reports/#reds'], ['/updates', 'reports/'],
+    ['/updates/2026-10-30-liverpool-in-detail', 'reports/']
+  ]);
+  const oldCard = path.match(/^\/assets\/cards\/(project|reds|match-pulse)\.(png|svg)$/);
+  const cardNames = {project:'liverpool-in-detail', reds:'one-match-many-questions', 'match-pulse':'form-cards-match-style'};
+  const target = oldCard ? 'assets/project-cards/'+cardNames[oldCard[1]]+'.'+oldCard[2] : pages.get(path);
+  if (target !== undefined) {
+    const url = new URL(root + target, location.origin);
+    url.search = location.search;
+    const hash = location.hash;
+    if (hash && !url.hash) url.hash = hash === '#main' || hash === '#projects-title' ? (path ? 'content' : 'catalog') : hash;
+    if (url.href !== location.href) location.replace(url.href);
+  }
+</script>
+</head><body><main>
+<h1>Page not found</h1>
+<p><a href="https://liv-ynwa.github.io/redadv/">Components</a> · <a href="https://liv-ynwa.github.io/redadv/reports/">Reports</a> · <a href="https://liv-ynwa.github.io/redadv/project-cards/">Project cards</a></p>
+</main></body></html>
