@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://liv-ynwa.github.io/redadv/sitemap.xml

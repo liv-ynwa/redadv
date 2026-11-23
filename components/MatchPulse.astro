@@ -1,0 +1,30 @@
+---
+import '../styles/components.css';
+import { publicComponentData } from './public-data.mjs';
+
+interface Props {
+  kind: 'matchday' | 'archive' | 'calibration' | 'match' | 'players' | 'trajectory' | 'form' | 'review' | 'discipline' | 'defense' | 'keeper' | 'style';
+  data: object | null;
+}
+
+const { kind, data } = Astro.props;
+const tags = {
+  matchday: 'mp-matchday',
+  archive: 'mp-archive',
+  calibration: 'mp-calibration',
+  match: 'mp-match',
+  players: 'mp-players',
+  trajectory: 'mp-trajectory',
+  form: 'mp-form',
+  review: 'mp-review',
+  discipline: 'mp-discipline',
+  defense: 'mp-defense',
+  keeper: 'mp-keeper',
+  style: 'mp-style',
+} as const;
+const Tag = tags[kind];
+---
+<Tag data-props={JSON.stringify(publicComponentData(kind, data))}></Tag>
+<script>
+  import './match-pulse.js';
+</script>
