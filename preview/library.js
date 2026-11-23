@@ -126,7 +126,7 @@
   }
   window.addEventListener('hashchange',route);
   window.addEventListener('storage',e=>{if(e.key===storageKey){saved=readSaved();render();}});
-  $('[data-guide]').onclick=()=>displayDialog('redadv','Guide',null,'<div class="usage"><section><h3>Browse components</h3><p>Filter the library by match stage or player. Open any card to explore it. Press Esc to return to the library.</p></section><section><h3>Save a component</h3><p>Use a bookmark to add a card to Saved. Bookmarks stay in this browser.</p></section><section><h3>Match data</h3><p>'+(location.protocol==='file:'?'Showing the offline sample from 21 November 2026.':publishedFeed?'The schedule advances at kick-off. Forecasts and results update when a new edition is published.':'Fixtures and reports are read from local match data. This page checks for updates every 30 seconds.')+' All kick-off times are UTC+8.</p></section></div>');
+  $('[data-guide]').onclick=()=>displayDialog('redadv','Guide',null,'<div class="usage"><section><h3>Browse components</h3><p>Filter the library by match stage or player. Open any card to explore it. Press Esc to return to the library.</p></section><section><h3>Save a component</h3><p>Use a bookmark to add a card to Saved. Bookmarks stay in this browser.</p></section><section><h3>Match data</h3><p>'+(location.protocol==='file:'?'Showing the offline sample from 21 November 2026.':publishedFeed?'Fixture changes, forecasts and results sync automatically from Red Half Lab. This page checks for updates every 30 seconds.':'Fixtures and reports are read from local match data. This page checks for updates every 30 seconds.')+' All kick-off times are UTC+8.</p></section></div>');
   $('[data-dismiss]').onclick=()=>closeDialog(dlg);
   dlg.addEventListener('click',e=>{if(e.target===dlg)closeDialog(dlg);});
   dlg.addEventListener('close',()=>{
@@ -235,14 +235,18 @@
     if(loading || (hasData && document.hidden))return;
     loading=true;
     try{
-      const response=await fetch(publishedFeed||'./api/live',{cache:'no-store',headers:etag?{'If-None-Match':etag}:{}});
+      const feedURL=publishedFeed?new URL(publishedFeed,document.baseURI):'./api/live';
+      if(publishedFeed)feedURL.searchParams.set('check',String(Math.floor(Date.now()/60000)));
+      const response=await fetch(feedURL,{cache:'no-store',headers:etag?{'If-None-Match':etag}:{}});
       if(response.status!==304){
         if(!response.ok)throw new Error('feed unavailable');
         const source=await response.json();
         if(publishedFeed){
           if(!publishedEdition || source.sync.publishedAt!==publishedEdition.sync.publishedAt || (cutoff && cutoff*1000<=Date.now())){
             publishedEdition=source;
-            publishedLabel='Published · '+new Date(source.sync.publishedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Shanghai'});
+            const publication=new Date(source.sync.publishedAt);
+            const label=source.sync.updateMode==='automatic'?'Data synced':'Published';
+            publishedLabel=label+' · '+publication.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'})+' UTC+8';
             usePublishedEdition();
           }
         }else applyEdition(window.MatchPulseUI.englishData(source));
