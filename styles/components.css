@@ -1426,24 +1426,15 @@ html:has(.mp-dialog:modal) {
   position:absolute; inset:0; width:100%; min-width:0; height:100%; padding:0; border:0; opacity:0; cursor:pointer;
 }
 .mp-fixture-actual { display:flex; align-items:baseline; gap:10px; margin-top:12px; padding-top:9px; border-top:1px solid var(--lfc-teal-100); }
-.mp-widget .mp-league-return { margin:0 0 12px; }
-.mp-availability { margin:14px 0; padding:13px 16px; background:#fcf6ed; border:1px solid #e8d8ba; border-left:3px solid #ac762b; border-radius:7px; }
-.mp-availability strong { display:block; color:#654819; font-size:14px; }
-.mp-availability p { margin:3px 0; color:#635548; font-size:13px; }
-.mp-availability>div { display:flex; flex-wrap:wrap; gap:3px 18px; }
-.mp-availability button { display:inline-flex; align-items:center; gap:4px; margin-top:5px; }
-.mp-availability .mp-icon,.mp-league-return .mp-icon { width:13px; height:13px; }
-.mp-plot[data-probing="false"] :is(.mp-chart-probe,.mp-probe-tip),.mp-match-readout[hidden] { display:none; }
 .mp-widget :is([data-jump-next],[data-related])[hidden] { display:none; }
 @media (pointer:coarse) {
   .mp-fixture-nav button { min-height:44px; }
   .mp-fixture-nav label { min-height:44px; }
 }
 @container (max-width:450px) {
-  .mp-fixture-nav { grid-template-columns:44px minmax(0,1fr) 44px; gap:4px; padding:6px; }
-  .mp-fixture-nav button { height:44px; padding:5px; }
-  .mp-fixture-nav button span { display:none; }
-  .mp-fixture-team strong { white-space:normal; line-height:1.15; font-size:15px; }
+  .mp-fixture-nav { gap:3px; padding:6px; }
+  .mp-fixture-nav button { gap:2px; padding:5px; font-size:12px; }
+  .mp-fixture-team strong { font-size:13px; }
   .mp-fixture-nav label small { font-size:10px; }
 }
 .mp-score-panel > .mp-note:only-child { grid-column:1 / -1; margin:0; }

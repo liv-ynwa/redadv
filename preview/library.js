@@ -1,11 +1,11 @@
 (() => {
   'use strict';
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const {icon,showDialog,closeDialog,sameGame,preferredRoute}=window.RedadvUI;
+  const {icon,showDialog,closeDialog,sameGame}=window.RedadvUI;
   const publishedFeed=document.documentElement.dataset.publishedFeed;
   const components=[
     {key:'matchday',name:'Match centre',group:'Pre-match',text:'Browse fixtures, forecasts and final scores across competitions.',read:s=>(s.matchday)},
-    {key:'players',name:'Players to watch',group:'Players',text:'Explore goalscorer and assist picks for each match.',read:s=>({groups:s.players,matchday:s.matchday})},
+    {key:'players',name:'Players to watch',group:'Players',text:'Explore goalscorer and assist picks for each match.',read:s=>({groups:s.players,fixtures:s.matchday.fixtures})},
     {key:'form',name:'Team form',group:'Pre-match',text:'Explore single-match and three-match form forecasts.',read:s=>(s.state)},
     {key:'archive',name:'Season archive',group:'Post-match',text:'Compare match totals and three-match averages by season.',read:s=>(s.archive)},
     {key:'calibration',name:'Forecast checks',group:'Post-match',text:'Check form, playing style and discipline against the results.',read:s=>(s.calibration)},
@@ -17,35 +17,17 @@
     {key:'discipline',name:'Cards and discipline',group:'Pre-match',text:'Explore booking forecasts and review completed matches.',read:s=>(s.cards)},
     {key:'match',name:'Fixture card',group:'Pre-match',text:'See the next kick-off, available score predictions and player picks.',read:s=>(s.match)}
   ];
-  function catalog(s){
-    return components.map(c=>{
-      const data=s?c.read(s):null;
-      const league=s?.matchday.fixtures.find(f=>f.id===s.matchday.leagueId);
-      let edition='';
-      if(c.group==='Players' && league){
-        const ready=Object.values(data.groups).some(g=>sameGame(league,g.nextFixture) && preferredRoute(g).items.some(p=>Number.isFinite(p.prediction)));
-        edition=league.opponent+' · '+(ready?'Player forecast available':'Player forecast pending');
-      }
-      return {...c,data,edition};
-    });
-  }
-  function playerPreview(base,fixture){
-    const route=preferredRoute(base);
-    const rows=sameGame(fixture,base.nextFixture)?route.items.filter(p=>Number.isFinite(p.prediction)):[];
-    if(rows.length)return {rows,label:'vs '+fixture.opponent};
-    const history=route.items.flatMap(p=>(p.history||[]).filter(h=>Number.isFinite(h.estimate) && (!fixture || h.date<fixture.date)).map(h=>({p,h})));
-    const last=history.reduce((latest,{h})=>!latest || h.date>latest.date?h:latest,null);
-    return {rows:history.filter(({h})=>sameGame(h,last)).map(({p,h})=>({...p,prediction:h.estimate})).sort((a,b)=>b.prediction-a.prediction),
-      label:last?'Last forecast · '+last.opponent:''};
-  }
+  const catalog=s=>components.map(c=>({...c,data:s?c.read(s):null}));
   function artwork(s){
     if(!s)return {};
     const match=s.match, next=s.matchday.fixtures.find(f=>f.kind==='next');
-    const league=s.matchday.fixtures.find(f=>f.id===s.matchday.leagueId);
     const form=s.state.single, style=s.style.forecasts[0], review=s.review.single[0], check=s.calibration.single.rows[0];
-    const scorers=playerPreview(s.players.scores,league), defenders=playerPreview(s.players.clearance_blocks,league), keepers=playerPreview(s.players.keeper_shot_value,league);
-    const scores=scorers.rows.slice(0,2), defense=defenders.rows.slice(0,2), keeper=keepers.rows[0];
+    const league=s.matchday.fixtures.find(f=>f.id===s.matchday.leagueId) || s.matchday.fixtures.find(f=>(f.kind==='next'||f.kind==='scheduled') && sameGame(f,s.players.scores.nextFixture));
+    const forecastPlayers=g=>sameGame(league,g.nextFixture)?g.items.filter(p=>Number.isFinite(p.prediction)):[];
+    const scores=forecastPlayers(s.players.scores).slice(0,2);
     const pathPlayer=scores[0] || s.players.scores.items.find(p=>p.history?.length);
+    const defense=forecastPlayers(s.players.clearance_blocks).slice(0,2);
+    const keeper=forecastPlayers(s.players.keeper_shot_value)[0];
     const short=next?esc(match.homeCode)+' <i>vs</i> '+esc(match.awayCode):'To be announced';
     const num=(n,d)=>Number.isFinite(n)?n.toFixed(d):'—';
     const artEmpty=(cls,title)=>'<div class="'+cls+'"><span>'+title+'</span><strong>Awaiting forecast</strong></div>';
@@ -55,12 +37,12 @@
       matchday:'<div class="art-fixture"><span>Next match · UTC+8</span><strong>'+short+'</strong><b>'+esc(next?.kickoff||'')+'</b></div>',
       archive:'<div class="art-log"><span>Season archive</span><strong>'+(lastSeason?lastSeason+' / '+String(lastSeason+1).slice(-2):'—')+'</strong><div><i></i><i></i><i></i></div></div>',
       calibration:check?'<div class="art-compare"><span>'+esc(check.fixture)+'</span>'+[['Pre-match forecast',check.point],['Actual total',check.actual]].map(([name,n])=>'<div>'+name+' <i style="width:'+Math.min(100,Number(n)||0)+'%"></i>'+num(n,1)+'</div>').join('')+'</div>':artEmpty('art-compare','Match review'),
-      players:scores.length?'<div class="art-rank"><small class="art-match-label">'+esc(scorers.label)+'</small>'+scores.map((p,i)=>'<div><i>0'+(i+1)+'</i><strong>'+esc(p.name)+'</strong><b>'+num(p.prediction,1)+'%</b></div>').join('')+'</div>':artEmpty('art-fixture','Premier League scorers'),
+      players:scores.length?'<div class="art-rank">'+scores.map((p,i)=>'<div><i>0'+(i+1)+'</i><strong>'+esc(p.name)+'</strong><b>'+num(p.prediction,1)+'%</b></div>').join('')+'</div>':artEmpty('art-fixture','Premier League scorers'),
       form:'<div class="art-state"><div><span>Team form forecast</span><strong>'+num(form?.point,0)+'<small> / 100</small></strong></div><div class="art-gauge">'+(form?.window?'<i style="left:'+form.window[0]+'%;width:'+(form.window[1]-form.window[0])+'%"></i>':'')+(Number.isFinite(form?.point)?'<b style="left:'+form.point+'%"></b>':'')+'</div></div>',
       review:review?'<div class="art-ticket"><div><span>Liverpool / '+esc(review.fixtures[0]?.opponent)+'</span><strong>'+num(review.actual,1)+'<small> pts</small></strong></div><b class="ticket-'+(review.hit==null?'pending':review.hit?'hit':'miss')+'">'+esc(review.hit==null?'Pending':review.hit?'In range':'Outside range')+'</b><div class="art-ticket-dashes"></div></div>':artEmpty('art-log','Post-match review'),
-      trajectory:pathPlayer?'<div class="art-chart"><div><strong>'+esc(pathPlayer.name)+'</strong><span>Scoring history</span></div><svg class="art-lines" viewBox="0 0 200 50"><polyline points="'+trend.map((h,i)=>(3+194*i/Math.max(1,trend.length-1))+','+(48-h.estimate*.46)).join(' ')+'" fill="none" stroke="currentColor" stroke-width="3"/></svg></div>':artEmpty('art-chart','Player trends'),
-      defense:defense.length?'<div class="art-defense"><small class="art-match-label">'+esc(defenders.label)+'</small><strong>Clearances and blocks</strong>'+defense.map(p=>'<div><span>'+esc(p.name)+'</span><i style="width:'+Math.min(100,p.prediction*7)+'%"></i><b>'+num(p.prediction,2)+'</b></div>').join('')+'</div>':artEmpty('art-defense','Defensive actions'),
-      keeper:keeper?'<div class="art-keeper"><small class="art-match-label">'+esc(keepers.label)+'</small><span>'+esc(keeper.name)+'</span><strong>'+num(keeper.prediction,2)+'<small> goals</small></strong><div><i></i><b style="left:'+Math.max(2,Math.min(98,50+48*keeper.prediction/Math.max(1,Math.abs(keeper.prediction))))+'%"></b></div></div>':artEmpty('art-keeper','Goalkeeper forecast'),
+      trajectory:pathPlayer?'<div class="art-chart"><div><strong>'+esc(pathPlayer.name)+'</strong><span>Scoring probability</span></div><svg class="art-lines" viewBox="0 0 200 50"><polyline points="'+trend.map((h,i)=>(3+194*i/Math.max(1,trend.length-1))+','+(48-h.estimate*.46)).join(' ')+'" fill="none" stroke="currentColor" stroke-width="3"/></svg></div>':artEmpty('art-chart','Player trends'),
+      defense:defense.length?'<div class="art-defense"><strong>Clearances and blocks</strong>'+defense.map(p=>'<div><span>'+esc(p.name)+'</span><i style="width:'+Math.min(100,p.prediction*7)+'%"></i><b>'+num(p.prediction,2)+'</b></div>').join('')+'</div>':artEmpty('art-defense','Defensive actions'),
+      keeper:keeper?'<div class="art-keeper"><span>'+esc(keeper.name)+'</span><strong>'+num(keeper.prediction,2)+'<small> goals</small></strong><div><i></i><b></b></div></div>':artEmpty('art-keeper','Goalkeeper forecast'),
       style:style?'<div class="art-style"><span>vs '+esc(style.opponent)+'</span><strong>'+esc((style.label||'Awaiting forecast').split(', ')[0])+'</strong><small>Style confidence '+num(style.confidence*100,0)+'%</small></div>':artEmpty('art-style','Match style'),
       discipline:'<div class="art-cards"><i></i><b></b><span>'+num(s.cards.expected,2)+'<small>Expected bookings / cards</small></span></div>',
       match:'<div class="art-match"><span>'+short+'</span><div></div></div>'
@@ -90,11 +72,11 @@
     const items=base.filter(c=>filter==='All'||c.group===filter);
     filterEl.innerHTML=filters.map(t=>'<button data-filter="'+t+'" type="button" aria-pressed="'+(filter===t)+'">'+t+'</button>').join('');
     $('#result-count').textContent=String(items.length);
-    grid.innerHTML=items.map(c=>'<article class="catalog-card"><button type="button" data-open="'+c.key+'" class="tile" aria-label="Open '+c.name+'" '+(c.edition?'aria-describedby="edition-'+c.key+'"':'')+'><div aria-hidden="true" class="art art-'+c.key+'-bg">'+(art[c.key]||icon(c.group==='Players'?'users':c.group==='Post-match'?'receipt':'field'))+'</div><div class="card-copy"><div class="card-category"><i></i>'+c.group+'</div><div class="card-title"><h3>'+c.name+'</h3>'+icon('diagonal')+'</div><p>'+c.text+'</p>'+(c.edition?'<small class="card-edition" id="edition-'+c.key+'">'+esc(c.edition)+'</small>':'')+'</div></button><button type="button" class="save" data-save="'+c.key+'" aria-label="'+(saved.has(c.key)?'Unsave ':'Save ')+c.name+'" title="'+(saved.has(c.key)?'Unsave ':'Save component')+'" aria-pressed="'+saved.has(c.key)+'">'+icon('bookmark')+'</button></article>').join('');
+    grid.innerHTML=items.map(c=>'<article class="catalog-card"><button type="button" data-open="'+c.key+'" class="tile" aria-label="Open '+c.name+'"><div aria-hidden="true" class="art art-'+c.key+'-bg">'+(art[c.key]||icon(c.group==='Players'?'users':c.group==='Post-match'?'receipt':'field'))+'</div><div class="card-copy"><div class="card-category"><i></i>'+c.group+'</div><div class="card-title"><h3>'+c.name+'</h3>'+icon('diagonal')+'</div><p>'+c.text+'</p></div></button><button type="button" class="save" data-save="'+c.key+'" aria-label="'+(saved.has(c.key)?'Unsave ':'Save ')+c.name+'" title="'+(saved.has(c.key)?'Unsave ':'Save component')+'" aria-pressed="'+saved.has(c.key)+'">'+icon('bookmark')+'</button></article>').join('');
     if(!items.length)grid.innerHTML='<div class="empty-library">'+icon('bookmark')+'<h3>'+(saved.size===0&&savedView?'No saved components yet':'No saved components in this category')+'</h3><p>Use the bookmark on any component to save it here.</p><a href="#all">Browse components '+icon('arrow')+'</a></div>';
   }
   function selectView(){
-    savedView=location.hash==='#saved';filter=location.hash==='#player-library'?'Players':'All';render();
+    savedView=location.hash==='#saved';filter='All';render();
   }
   function displayDialog(category,title,element,content=''){
     $('#dialog-category').textContent=category;$('#dialog-title').textContent=title;
@@ -125,10 +107,7 @@
   });
   filterEl.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
-    filter=b.dataset.filter;
-    if(!savedView && (filter==='Players' || location.hash==='#player-library'))
-      history.replaceState(null,'',filter==='Players'?'#player-library':'#all');
-    render();filterEl.querySelector('[aria-pressed=true]').focus({preventScroll:true});
+    filter=b.dataset.filter;render();filterEl.querySelector('[aria-pressed=true]').focus({preventScroll:true});
     announce(filter+' ·  '+$('#result-count').textContent+'  components');
   });
   document.querySelectorAll('[data-view],.brand').forEach(a=>a.addEventListener('click',e=>{
@@ -142,10 +121,9 @@
       const el=document.createElement('mp-'+component.key);el.data=component.data;
       dlg.querySelector('.dialog-body').replaceChildren(el);
       showDialog(dlg);
-    } } else if(['#all','#saved','#player-library',''].includes(location.hash)) {
+    } } else if(['#all','#saved',''].includes(location.hash)) {
       if(dlg.open) dlg.close();
-      selectView();
-      if(location.hash==='#player-library')$('#catalog').scrollIntoView();else window.scrollTo(0,0);
+      selectView();window.scrollTo(0,0);
     }
   }
   window.addEventListener('hashchange',route);
@@ -235,7 +213,7 @@
           }
         }
         for(const route of [group,...(group.variants||[])]){
-          route.fixtureId=league?.id;route.nextFixture=league?{id:league.id,date:league.date,opponent:league.opponent,kickoff:league.kickoff,home:league.home}:null;
+          route.fixtureId=league?.id;route.nextFixture=league?{id:league.id,date:league.date,opponent:league.opponent,kickoff:league.kickoff}:null;
           route.fixtureLabel=league?'vs '+league.opponent:'No upcoming Premier League fixture';
         }
       }
@@ -246,7 +224,6 @@
   function applyEdition(source){
     const s=connect(source);
     update(s);
-    if(!hasData && location.hash==='#player-library')requestAnimationFrame(()=>document.querySelector('#catalog').scrollIntoView());
     hasData=true;
     cutoff=s.matchday.fixtures.find(f=>f.kind==='next')?.timestamp;
     clearTimeout(kickoffTimer);

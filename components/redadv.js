@@ -205,7 +205,7 @@
         if(child){
           const kind=child.localName.slice(3);
           if(kind==='trajectory' && child.data.groups && value.groups){
-            child.updateLive({...child.data,groups:value.groups,fixtures:value.fixtures||value.matchday?.fixtures,matchday:value.matchday});
+            child.updateLive({...child.data,groups:value.groups,fixtures:value.fixtures||value.matchday?.fixtures});
           }else if(value[kind]){
             child.updateLive(value[kind]);
           }
@@ -245,7 +245,7 @@
           child.data=this.data[kind];
           if(kind==='calibration')child.scope=this.localName==='mp-style'?'style':this.localName==='mp-discipline'?'discipline':this.scope;
           if(kind==='archive')child.scope=this.scope;
-          if(kind==='matchday'){child.panel=b.dataset.panelTarget||'players';child.target=this.target;child.playerModel=this.modelKey;
+          if(kind==='matchday'){child.panel='players';child.target=this.target;child.playerModel=this.modelKey;
             child.fixture=child.data.fixtures?.find(f=>sameGame(f,this.activeFixture))?.id;}
           openDetail(this,b.textContent.trim(),'',child);return;
         }
@@ -312,20 +312,15 @@
   }
 
   function routesFor(g) { return [g,...(g.variants || [])]; }
-  const hasPredictions = route => route.items?.some(p=>valid(p.prediction));
-  function preferredRoute(base,key) {
-    const routes=routesFor(base);
-    return routes.find(r=>r.modelKey===key) || routes.find(hasPredictions) || base;
-  }
   function activeGroup(base,key) {
-    const route=preferredRoute(base,key);
+    const route=routesFor(base).find(r=>r.modelKey===key) || base;
     return route===base ? base : {...base,...route};
   }
   function playerLog(rows,unit) {
     const cells=[...rows].reverse().map(h=>[
       esc((h.future?'Next match · ':'')+(h.kickoff||h.date)+' vs '+h.opponent),
       fmt(h.estimate,unit)+(valid(h.low)&&valid(h.high)?'<small>80% interval '+fixed(h.low,2)+' to '+fixed(h.high,2)+'</small>':''),
-      esc(h.actual??(h.future?'Pending':'Unavailable'))]);
+      esc(h.actual??'Pending')]);
     return disclosure('Match-by-match forecasts and results',table(['Match','Forecast','Actual'],cells));
   }
   function forecastOptions(routes, key) {
@@ -338,10 +333,10 @@
   const fixtureStatus = f => f.kind==='next'?'Upcoming':f.kind==='scheduled'?'Scheduled':f.kind==='awaiting'?'Kicked off · Result pending':'Played';
   const fixtureTime = f => f.kickoff?'UTC+8 '+f.kickoff.slice(5):f.date;
   function fixtureRows(f,g) {
-    if((!f && !g.nextFixture) || ((upcomingFixture(f) || f?.kind==='awaiting') && sameGame(f,g.nextFixture))){
+    if(!f || (['next','scheduled'].includes(f.kind) && sameGame(f,g.nextFixture))){
       return g.items.filter(p=>valid(p.prediction)).map(p=>({p,value:p.prediction,actual:null,kind:p.kind,low:p.low,high:p.high}));
     }
-    if(!f || !['played','awaiting'].includes(f.kind))return [];
+    if(f.kind!=='played' && f.kind!=='awaiting')return [];
     return [...g.items,...(g.pastPlayers||[])].flatMap(p=>{
       const h=p.history?.find(r=>sameGame(r,f)) || p.earlier?.find(r=>sameGame(r,f));
       if(!h)return [];
@@ -349,17 +344,15 @@
     }).sort((a,b)=>(b.value??-Infinity)-(a.value??-Infinity) || String(a.p.id).localeCompare(String(b.p.id)));
   }
   function selectedMatchLabel(f,fallback){return f?(f.competition?f.competition+' · ':'')+(f.home===false?f.opponent+' vs Liverpool':'Liverpool vs '+f.opponent):fallback;}
-  function noForecast(f){return f.kind==='played'?'No player forecast was recorded against '+f.opponent+'.':'Player forecast pending';}
+  function noForecast(f){return 'Player forecasts for the match against '+f.opponent+' are pending.';}
 
   class FixtureWidget extends Widget {
     reset(){
       this.fixtureKey=null;
+      this.pinnedFixtureId=null;
       this.initialDate=this.data?.fixtureDate;
       this.initialOpponent=this.data?.fixtureOpponent;
       this.activeFixture=null;
-      this.pinnedId=null;
-      this.chosenTarget=this.data?.target;
-      this.chosenModel=this.data?.modelKey;
     }
     calendar(g,extra=[]) {
       const saved=this.data.fixtures || this.data.matchday?.fixtures || [];
@@ -377,65 +370,58 @@
       if(g.nextFixture && !saved.length)add({...g.nextFixture,kind:'next'});
       for(const f of saved)add(f);
       this.fixtureList=[...games.values()].sort((a,b)=>a.date.localeCompare(b.date));
+      const selected=(this.pinnedFixtureId!=null && this.fixtureList.find(f=>f.id===this.pinnedFixtureId)) ||
+        games.get(this.fixtureKey) || this.fixtureList.find(f=>f.date===this.initialDate && (!this.initialOpponent || f.opponent===this.initialOpponent));
       const upcoming=this.fixtureList.filter(upcomingFixture);
-      this.leagueFixture=upcoming.find(f=>f.id!=null && f.id===this.data.matchday?.leagueId) ||
-        upcoming.find(f=>sameGame(f,g.nextFixture)) || upcoming.find(f=>f.comp==='GB1');
-      const selected=(this.pinnedId!=null && this.fixtureList.find(f=>f.id===this.pinnedId)) || games.get(this.fixtureKey) ||
-        this.fixtureList.find(f=>f.date===this.initialDate && (!this.initialOpponent || f.opponent===this.initialOpponent));
-      this.activeFixture=selected || this.leagueFixture || upcoming[0] || this.fixtureList.at(-1);
-      this.fixtureKey=selected?fixtureKey(selected):null;
-      this.pinnedId=selected?.id??null;
+      this.activeFixture=selected || upcoming.find(f=>sameGame(f,g.nextFixture)) ||
+        upcoming.find(f=>f.comp==='GB1') || upcoming[0] || this.fixtureList.at(-1);
       this.initialDate=null;
+      this.pinFixture(selected);
       return this.activeFixture;
     }
-    pin(f){
-      this.fixtureKey=fixtureKey(f);this.pinnedId=f.id??null;
-    }
-    availability(f,players,otherPlayersReady=false){
-      if(!f)return '';
-      const day=this.data.matchday, form=day?.state?.single;
-      const teamForm=upcomingFixture(f) && sameGame(f,form?.fixtures?.[0]) && valid(form.point);
-      const hasOutlook=upcomingFixture(f) && day && (teamForm || f.style || (f.id===day.leagueId && valid(day.cards?.expected)));
-      const history=players.flatMap(p=>p.history||[]).filter(h=>valid(h.estimate) && h.date<f.date);
-      const last=history.reduce((best,h)=>!best || h.date>best.date?h:best,null);
-      const outsideLeague=f.comp && f.comp!=='GB1' && upcomingFixture(f);
-      const heading=outsideLeague?'League forecasts only':otherPlayersReady?'No forecast for '+players[0].name:noForecast(f);
-      return '<section class="mp-availability" aria-label="Forecast availability"><strong>'+esc(heading)+'</strong>'+
-        (upcomingFixture(f)?'<p>'+esc(f.opponent)+' · '+(outsideLeague?'Player forecasts cover Premier League fixtures.':otherPlayersReady?'Select another player to see the published forecasts.':'Player figures will appear here when published.')+'</p>':'')+
-        '<div>'+(hasOutlook?'<button type="button" class="mp-text-btn" data-related="matchday" data-panel-target="team">Team outlook'+(teamForm?' · '+form.point+' / 100':'')+' '+icon('arrow')+'</button>':'')+
-        (last?'<button type="button" class="mp-text-btn" data-go-fixture="'+esc(fixtureKey(last))+'">Last forecast · '+esc(last.opponent)+' '+icon('arrow')+'</button>':'')+'</div></section>';
+    pinFixture(f){
+      this.fixtureKey=f?fixtureKey(f):null;
+      this.pinnedFixtureId=f?.id??null;
     }
     nav() {
       const f=this.activeFixture;
       if(!f)return '';
       const items=this.fixtureList, idx=items.indexOf(f);
-      const step=(dir,label,disabled)=>'<button type="button" data-match-step="'+dir+'" aria-label="'+label+'" title="'+label+'" aria-disabled="'+disabled+'">'+(dir<0?icon('chevron'):'')+'<span>'+label+'</span>'+(dir>0?icon('chevron'):'')+'</button>';
-      const options=items.map(g=>'<option value="'+esc(fixtureKey(g))+'" '+(g===f?'selected':'')+'>'+esc((g.kickoff||g.date).slice(0,10)+' · '+g.opponent+(g.competition?' · '+g.competition:''))+'</option>').join('');
+      const step=(dir,label,disabled)=>'<button type="button" data-match-step="'+dir+'" aria-disabled="'+disabled+'">'+(dir<0?icon('chevron'):'')+label+(dir>0?icon('chevron'):'')+'</button>';
+      const options=items.map(g=>'<option value="'+esc(fixtureKey(g))+'" '+(g===f?'selected':'')+'>'+esc((g.kickoff||g.date).slice(0,10)+' · vs '+g.opponent)+'</option>').join('');
       return '<div class="mp-fixture-nav" role="group" aria-label="Match navigation">'+step(-1,'Previous match',idx===0)+
-        '<label><small data-fixture-stage aria-hidden="true">'+esc((f===this.leagueFixture?'Next league match':fixtureStatus(f))+' · '+fixtureTime(f))+'</small><span class="mp-fixture-team" aria-hidden="true"><strong>'+esc(f.opponent)+'</strong>'+icon('down')+'</span>'+
+        '<label><small data-fixture-stage aria-hidden="true">'+esc(fixtureTime(f))+'</small><span class="mp-fixture-team" aria-hidden="true"><strong>'+esc(fixtureStatus(f)+' · '+f.opponent)+'</strong>'+icon('down')+'</span>'+
         '<select data-player-fixture aria-label="Select match">'+options+'</select></label>'+
-        step(1,'Next match',idx===items.length-1)+'</div>'+
-        (this.leagueFixture && this.leagueFixture!==f?'<button type="button" class="mp-text-btn mp-league-return" data-go-fixture="'+esc(fixtureKey(this.leagueFixture))+'">Next league match · '+esc(this.leagueFixture.opponent)+' '+icon('arrow')+'</button>':'');
+        step(1,'Next match',idx===items.length-1)+'</div>';
     }
     fixtureChange(e){
       if(!e.target.matches('[data-player-fixture]') || e.target.closest('.mp-widget')!==this)return false;
       const f=this.fixtureList.find(g=>fixtureKey(g)===e.target.value);
-      if(f){this.pin(f);this.paint();this.querySelector('[data-player-fixture]')?.focus({preventScroll:true});}
+      if(f){this.pinFixture(f);this.paint();this.querySelector('[data-player-fixture]')?.focus({preventScroll:true});}
       return true;
     }
     act(b){
-      if(b.hasAttribute('data-go-fixture')){
-        const f=this.fixtureList.find(g=>fixtureKey(g)===b.dataset.goFixture);
-        if(f){this.pin(f);this.paint();this.querySelector('[data-player-fixture]')?.focus({preventScroll:true});}
-        return true;
-      }
       if(!b.hasAttribute('data-match-step'))return false;
       if(b.getAttribute('aria-disabled')!=='true'){
         const next=this.fixtureList.indexOf(this.activeFixture)+Number(b.dataset.matchStep);
         const f=this.fixtureList[next];
-        if(f){this.pin(f);this.refresh('data-match-step',b.dataset.matchStep);}
+        if(f){this.pinFixture(f);this.refresh('data-match-step',b.dataset.matchStep);}
       }
       return true;
+    }
+    syncFixtureNav(h){
+      const f=this.fixtureList.find(g=>sameGame(g,h));
+      if(!f || f===this.activeFixture)return;
+      this.activeFixture=f;this.pinFixture(f);
+      const nav=this.querySelector('.mp-fixture-nav');
+      const related=this.querySelector('[data-related="matchday"]');
+      if(related)related.hidden=!this.data.matchday.fixtures.some(game=>sameGame(game,f)&&(game.kind!=='scheduled'||game.id===this.data.matchday.leagueId));
+      nav.querySelector('select').value=this.fixtureKey;
+      nav.querySelector('[data-fixture-stage]').textContent=fixtureTime(f);
+      nav.querySelector('.mp-fixture-team strong').textContent=fixtureStatus(f)+' · '+f.opponent;
+      const index=this.fixtureList.indexOf(f);
+      nav.querySelector('[data-match-step="-1"]').setAttribute('aria-disabled',String(index===0));
+      nav.querySelector('[data-match-step="1"]').setAttribute('aria-disabled',String(index===this.fixtureList.length-1));
     }
   }
   class Players extends FixtureWidget {
@@ -467,8 +453,8 @@
     view() {
       const choices = Object.entries(this.data.groups || this.data).filter(([,g]) => Array.isArray(g?.items));
       if (!choices.length) return empty('No player forecast available.');
-      const [key, base] = choices.find(([k]) => k === this.chosenTarget) || choices.find(([,g])=>routesFor(g).some(hasPredictions)) || choices[0];
-      const g = activeGroup(base,this.chosenModel);
+      const [key, base] = choices.find(([k]) => k === this.target) || choices[0];
+      const g = activeGroup(base,this.modelKey);
       this.modelKey=g.modelKey;
       this.target = key;
       const f=this.calendar(base);
@@ -489,15 +475,15 @@
       });
       const optionsHTML = choices.map(([k,v]) =>
         `<option value="${esc(k)}" ${k===key?'selected':''}>${esc(v.label)}</option>`).join('');
-      const noRows = filter === 'watch' ? 'Follow a player to see them here.' : 'No players match this filter.';
+      const noRows = f && !roster.length ? noForecast(f) : filter === 'watch' ? 'Follow a player to see them here.' : 'No players match this filter.';
       return `<article class="mp-sheet">
         ${this.nav()}
         <div class="mp-section-top"><div><small class="mp-caption">${esc(selectedMatchLabel(f,g.fixtureLabel || 'Player watch'))}</small><h3>Players to watch</h3></div>
           <label class="mp-select"><span class="sr-only">Prediction type</span>
             <select data-target>${optionsHTML}</select></label></div>
         ${routesFor(base).length>1?selector('listModel','Forecast option',forecastOptions(routesFor(base),'modelKey'),this.modelKey):''}
-        ${roster.length?group('Player filters', options, filter, 'filter'):''}
-        <div class="mp-players">${items.length ? items.map(row => this.row(row,this.listGroup,watched)).join('') : !roster.length && f?this.availability(f,g.items):empty(noRows)}</div>
+        ${group('Player filters', options, filter, 'filter')}
+        <div class="mp-players">${items.length ? items.map(row => this.row(row,this.listGroup,watched)).join('') : empty(noRows)}</div>
       </article>`;
     }
 
@@ -506,11 +492,11 @@
       this.onchange = e => {
         if(this.fixtureChange(e))return;
         if(e.target.matches('[data-choice="listModel"]') && e.target.closest('.mp-widget')===this){
-          this.chosenModel=e.target.value;this.paint();this.querySelector('[data-choice="listModel"]').focus({preventScroll:true});return;
+          this.modelKey=e.target.value;this.paint();this.querySelector('[data-choice="listModel"]').focus({preventScroll:true});return;
         }
         if (!e.target.matches('[data-target]') || e.target.closest('.mp-widget')!==this) return;
-        this.chosenModel=null;
-        this.chosenTarget = e.target.value;
+        this.modelKey=null;
+        this.target = e.target.value;
         this.filter = 'all';
         this.paint();
         this.querySelector('select[data-target]')?.focus();
@@ -552,7 +538,7 @@
       }
       const detail = document.createElement('mp-trajectory');
       const f=this.activeFixture;
-      const context={fixtures:this.fixtureList,matchday:this.data.matchday,fixtureDate:f?.date,fixtureOpponent:f?.opponent};
+      const context={fixtures:this.fixtureList,fixtureDate:f?.date,fixtureOpponent:f?.opponent};
       detail.data=group.items.includes(item)?{...context,groups:this.data.groups||this.data,target:this.target,playerId:item.id,modelKey:group.modelKey}:
         {...context,...profile({...item,historyOnly:true,prediction:row.value},group)};
       openDetail(this, 'Player trends', '', detail);
@@ -588,8 +574,7 @@
         const name = e.target.dataset.choice;
         if (!['target','modelKey','playerId'].includes(name) || e.target.closest('.mp-widget') !== this) return;
         this[name] = e.target.value;
-        if (name === 'target'){this.chosenTarget=e.target.value;this.chosenModel=null;}
-        if (name === 'modelKey')this.chosenModel=e.target.value;
+        if (name === 'target') this.modelKey = null;
         this.point = null;
         this.paint();
         this.querySelector(`[data-choice="${name}"]`)?.focus({preventScroll:true});
@@ -599,21 +584,17 @@
       const groups = this.data.groups || {};
       const targets = Object.entries(groups).filter(([,g]) => Array.isArray(g?.items));
       if (!targets.length) return null;
-      const [target, base] = targets.find(([key]) => key === this.chosenTarget) || targets.find(([,g])=>routesFor(g).some(hasPredictions)) || targets[0];
+      const [target, base] = targets.find(([key]) => key === this.target) || targets[0];
       const models = [base, ...(base.variants || [])];
-      const route = preferredRoute(base,this.chosenModel);
+      const route = models.find(m => m.modelKey === this.modelKey) || base;
       const archived=(route.pastPlayers||[]).filter(p=>p.id===this.playerId ||
         p.history?.some(h=>fixtureKey(h)===this.fixtureKey || (this.initialDate && h.date===this.initialDate && (!this.initialOpponent || h.opponent===this.initialOpponent))));
       const items=[...route.items,...archived.map(p=>({...p,historyOnly:true}))];
-      const selected=this.fixtureKey || (this.initialDate && this.initialOpponent && fixtureKey({date:this.initialDate,opponent:this.initialOpponent}));
-      const hasForecast=p=>{
-        if(!selected || (base.nextFixture && fixtureKey(base.nextFixture)===selected))return valid(p.prediction);
-        return p.history?.some(h=>fixtureKey(h)===selected && valid(h.estimate));
-      };
-      const player = items.find(p => p.id === this.playerId) || items.find(hasForecast) || items[0];
+      const player = items.find(p => p.id === this.playerId) ||
+        (!this.fixtureKey && !this.initialDate && items.find(p=>valid(p.prediction))) || items[0];
       this.target = target;
       this.modelKey = route.modelKey;
-      this.shownPlayerId=player?.id;
+      this.shownPlayerId = player?.id;
       return {targets, target, base, models, route, items, player};
     }
     controls(selection, showPlayer = true) {
@@ -626,7 +607,7 @@
     }
     openTrajectory() {
       const el = document.createElement('mp-trajectory');
-      el.data = {groups:this.data.groups, fixtures:this.fixtureList,matchday:this.data.matchday,fixtureDate:this.activeFixture?.date,fixtureOpponent:this.activeFixture?.opponent,target:this.target, modelKey:this.modelKey, playerId:this.shownPlayerId};
+      el.data = {groups:this.data.groups, fixtures:this.fixtureList,fixtureDate:this.activeFixture?.date,fixtureOpponent:this.activeFixture?.opponent,target:this.target, modelKey:this.modelKey, playerId:this.shownPlayerId};
       openDetail(this, 'Player trends', '', el);
     }
   }
@@ -670,14 +651,13 @@
     const dateIndices = [...new Set([0,Math.floor((history.length-1)/2),history.length-1])];
     const axis = dateIndices.map(i=>`<text x="${x(i)}" y="175" text-anchor="middle">${esc(history[i].future?'Next match':history[i].date.slice(5))}</text>`).join('');
     const current = history[selected];
-    const probeX = current ? x(selected) : firstX;
-    const cross = `<g class="mp-chart-probe" style="transform:translateX(${probeX}px)">
+    const cross = `<g class="mp-chart-probe" style="transform:translateX(${x(selected)}px)">
       <line class="mp-cross" x1="0" x2="0" y1="10" y2="150"/>
-      <g class="mp-probe-dot" style="transform:translateY(${valid(current?.estimate)?y(current.estimate):0}px)" visibility="${valid(current?.estimate)?'visible':'hidden'}">
+      <g class="mp-probe-dot" style="transform:translateY(${valid(current.estimate)?y(current.estimate):0}px)" visibility="${valid(current.estimate)?'visible':'hidden'}">
         <circle class="mp-probe-halo" r="10"/><circle class="mp-probe-core" r="4.5"/></g></g>`;
     const buttons = history.map((h,i) => {
       const left = i===0 ? firstX-8 : (x(i-1)+x(i))/2, right=i===history.length-1 ? lastX+11 : (x(i)+x(i+1))/2;
-      return `<button type="button" class="${h.future?'mp-future-point':''}" data-point="${i}" data-x="${x(i)}" data-y="${valid(h.estimate)?y(h.estimate):''}" tabindex="${i===Math.max(0,selected)?0:-1}" aria-pressed="${i===selected}"
+      return `<button type="button" class="${h.future?'mp-future-point':''}" data-point="${i}" data-x="${x(i)}" data-y="${valid(h.estimate)?y(h.estimate):''}" tabindex="${i===selected?0:-1}" aria-pressed="${i===selected}"
         aria-label="${esc(h.date+' vs '+h.opponent+', forecast '+fmt(h.estimate,unit)+', actual '+(h.actual??'Pending'))}"
         style="left:${left/width*100}%;width:${(right-left)/width*100}%"></button>`;
     }).join('');
@@ -687,16 +667,16 @@
       return `<circle cx="${x(i)}" cy="198" r="4" fill="${fill}" stroke="${valid(h.observed)?'#0b5d56':'#b5a7ab'}"/>`;
     }).join('') : '';
     return `<div class="mp-linechart"><div class="mp-legend">${legend}</div>
-      <div class="mp-plot" data-probing="${Boolean(current)}" style="--mp-probe-x:${probeX/width*100}%">
-      <div class="mp-probe-tip" data-locked aria-hidden="true"><i></i><span>${esc(current?.future?'Next match':current?.date.slice(5))}</span><b>${fmt(current?.estimate,unit)}</b></div>
+      <div class="mp-plot" style="--mp-probe-x:${x(selected)/width*100}%">
+      <div class="mp-probe-tip" data-locked aria-hidden="true"><i></i><span>${esc(current.future?'Next match':current.date.slice(5))}</span><b>${fmt(current.estimate,unit)}</b></div>
       <svg viewBox="0 0 ${width} ${unit==='%'?212:186}" role="img" aria-label="Forecasts and results by match, in ${esc(unit)}">
       ${history.at(-1).future?`<rect class="mp-future-lane" x="${x(history.length-1)-12}" y="8" width="24" height="147" rx="5"/>`:''}${ticks.join('')}${keys.map(series).join('')}${axis}${dots}${cross}</svg>
       <div class="mp-hit-columns" role="group" aria-label="Select a match. Use the arrow keys to move, or Home and End to jump to the first or last match.">${buttons}</div></div>
       <div class="mp-chart-footer">
         ${unit==='%'?'<div class="mp-event-key"><span><i></i>Occurred</span><span><i></i>Did not occur</span></div>':''}
         <div class="mp-chart-stepper" role="group" aria-label="Match history">
-          <button type="button" data-step="-1" aria-label="Previous chart point" aria-disabled="${selected<=0}">${icon('chevron')}</button>
-          <span>${current?'<b>'+(selected+1)+'</b> / ':''}${history.length} matches</span>
+          <button type="button" data-step="-1" aria-label="Previous chart point" aria-disabled="${selected===0}">${icon('chevron')}</button>
+          <span><b>${selected+1}</b> / ${history.length} matches</span>
           <button type="button" data-step="1" aria-label="Next chart point" aria-disabled="${selected===history.length-1}">${icon('chevron')}</button>
         </div>
       </div><span class="sr-only" role="status" data-point-status></span></div>`;
@@ -725,13 +705,15 @@
       if(season.length>5)ranges.push(['five','Last 5 matches']);
       if(earlier.length)ranges.push(['all','All records']);
       this.historyShown=history;this.unitShown=unit;this.profileShown=data;
-      this.point=index;this.displayedPoint=index;
+      this.point=index>=0?index:history.length-1;this.displayedPoint=this.point;
+      const explanation=f?.kind==='played'?'No forecast for this player in the selected match.':f?noForecast(f):'No match forecasts recorded.';
       return `<article class="mp-sheet mp-explorer">
         ${this.nav()}${selection?this.controls(selection):''}
         <div data-fixture-summary>${this.playerSummary(f,h,observation)}</div>
-        ${f && !valid(h?.estimate)?this.availability(f,[p],upcomingFixture(f) && sameGame(f,nextFixture) && selection?.route.items.some(item=>valid(item.prediction))):''}
         <div class="mp-chart-head"><h4>Forecast history</h4>${ranges.length>1?group('Chart period',ranges,this.span,'span'):''}</div>
-        ${history.length?lineChart(history,this.point,unit,this.compactChart)+'<div class="mp-match-readout" '+(h?'':'hidden')+'>'+(h?this.readout(h):'')+'</div>':''}
+        ${h?'':'<p class="mp-note" data-chart-note>'+esc(explanation)+'</p>'}
+        ${history.length?lineChart(history,this.point,unit,this.compactChart)+'<div class="mp-match-readout">'+this.readout(history[this.point])+'</div>':''}
+        ${future?'<button type="button" data-jump-next '+(sameGame(f,future)?'hidden':'')+' class="mp-text-action">Jump to next forecast · vs '+esc(future.opponent)+' '+icon('arrow')+'</button>':''}
         ${history.length?playerLog(history,unit):''}
       </article>`;
     }
@@ -740,22 +722,18 @@
       const value=f?h?.estimate:p.prediction;
       const actual=h?.actual??(valid(observation?.value)?fmt(observation.value,unit):'Unavailable');
       return `<div class="mp-athlete-head"><div><span class="mp-caption">${esc([selectedMatchLabel(f,fixtureLabel),label].filter(Boolean).join(' · '))}</span>
-        <h3>${esc(p.name)}</h3></div>${valid(value)?'<div class="mp-athlete-value"><small>Match forecast</small><b>'+fmt(value,unit)+'</b></div>':''}</div>
+        <h3>${esc(p.name)}</h3></div><div class="mp-athlete-value"><small>${f?.kind==='next'?'Next forecast':'Match forecast'}</small><b>${fmt(value,unit)}</b></div></div>
         ${f?.kind==='played'?'<p class="mp-note">Match result <b>'+esc(actual)+'</b></p>':''}`;
     }
     readout(h) {
       return `<div><time>${h.future?'Next match · UTC+8 '+esc(h.kickoff||h.date):esc(h.date)}</time><strong>vs ${esc(h.opponent)}</strong></div>
-        ${metrics([['Pre-match forecast',fmt(h.estimate,this.unitShown)],['Result',h.actual??(h.future?'Pending':'Unavailable')]])}`;
+        ${metrics([['Pre-match forecast',h.future&&!valid(h.estimate)?'Not published':fmt(h.estimate,this.unitShown)],['Result',h.actual??'Pending']])}`;
     }
     displayPoint(index) {
       const h = this.historyShown?.[index];
-      const plot=this.querySelector('.mp-plot'), readout=this.querySelector('.mp-match-readout');
-      if(!plot || !readout)return;
-      plot.dataset.probing=String(Boolean(h));
-      readout.hidden=!h;
-      if(!h){this.displayedPoint=-1;return;}
+      if (!h) return;
       const button = this.querySelector('[data-point="'+index+'"]');
-      const tip = plot.querySelector('.mp-probe-tip');
+      const plot = button.closest('.mp-plot'), tip = plot.querySelector('.mp-probe-tip');
       tip.toggleAttribute('data-locked', index === this.point);
       if (this.displayedPoint === index) return;
       this.displayedPoint = index;
@@ -767,7 +745,7 @@
       if (y !== '') dot.style.transform = 'translateY('+y+'px)';
       tip.querySelector('span').textContent = h.future?'Next match':h.date.slice(5);
       tip.querySelector('b').textContent = fmt(h.estimate,this.unitShown);
-      readout.innerHTML = this.readout(h);
+      this.querySelector('.mp-match-readout').innerHTML = this.readout(h);
     }
     connectedCallback() {
       this.compactChart = (this.clientWidth || window.innerWidth) <= 520;
@@ -798,6 +776,7 @@
         const i=e.key==='Home'?0:e.key==='End'?buttons.length-1:Number(e.target.dataset.point)+(e.key==='ArrowLeft'?-1:1);
         const next = buttons[Math.max(0, Math.min(buttons.length-1,i))];
         this.act(next);
+        next.focus({preventScroll:true});
       };
     }
     disconnectedCallback() {
@@ -805,6 +784,11 @@
     }
     act(b) {
       if(super.act(b))return;
+      if (b.hasAttribute('data-jump-next')) {
+        const next=this.fixtureList.find(f=>sameGame(f,this.profileShown.nextFixture));
+        if(next){this.pinFixture(next);this.paint();this.querySelector('[data-player-fixture]')?.focus({preventScroll:true});}
+        return;
+      }
       if (b.hasAttribute('data-step')) {
         if (b.getAttribute('aria-disabled') === 'true') return;
         const next = this.point + Number(b.dataset.step);
@@ -813,20 +797,26 @@
       }
       if (b.hasAttribute('data-span')) {
         this.span=b.dataset.span;
-        if(this.span==='five' && this.activeFixture?.kind==='played' && !this.profileShown.player.history?.slice(-5).some(h=>sameGame(h,this.activeFixture))){
-          const recent=this.profileShown.player.history?.at(-1);
-          if(recent)this.pin(this.fixtureList.find(f=>sameGame(f,recent))||recent);
-        }
+        if(this.span==='five' && this.activeFixture?.kind==='played' && !this.profileShown.player.history?.slice(-5).some(h=>sameGame(h,this.activeFixture)))this.pinFixture(null);
         this.refresh('data-span',this.span);
       }
       if (b.hasAttribute('data-point')) {
-        const h=this.historyShown[Number(b.dataset.point)];
-        const f=this.fixtureList.find(game=>sameGame(game,h));
-        if(!f)return;
-        this.pin(f);
-        this.playerId=this.shownPlayerId;
-        this.paint();
-        this.querySelector('[data-point][aria-pressed="true"]')?.focus({preventScroll:true});
+        const previous = this.querySelector('[data-point][aria-pressed="true"]');
+        if (previous) { previous.tabIndex = -1; previous.setAttribute('aria-pressed','false'); }
+        this.point = Number(b.dataset.point);
+        b.tabIndex = 0;
+        b.setAttribute('aria-pressed','true');
+        this.displayPoint(this.point);
+        const h=this.historyShown[this.point];
+        this.syncFixtureNav(h);
+        this.querySelector('[data-chart-note]')?.remove();
+        const jump=this.querySelector('[data-jump-next]');
+        if(jump)jump.hidden=sameGame(this.activeFixture,this.profileShown.nextFixture);
+        this.querySelector('[data-fixture-summary]').innerHTML=this.playerSummary(this.activeFixture,h);
+        this.querySelector('.mp-chart-stepper b').textContent = String(this.point+1);
+        this.querySelector('[data-step="-1"]').setAttribute('aria-disabled',String(this.point===0));
+        this.querySelector('[data-step="1"]').setAttribute('aria-disabled',String(this.point===this.historyShown.length-1));
+        this.querySelector('[data-point-status]').textContent = b.getAttribute('aria-label');
       }
     }
   }
@@ -911,8 +901,7 @@
       const past=f?.kind==='played';
       const recent=past?observations?.find(r=>sameGame(r,f)):observations?.[0]||p.history?.at(-1);
       const measured=valid(recent?.value)?recent.value+' events'+(valid(recent.beaten)?' (dribbled past '+recent.beaten+' times)':''):null;
-      const recentValue=past?(row?.actual??measured):(measured??recent?.actual);
-      const lastEstimate=p.history?.filter(h=>valid(h.estimate) && (!f || h.date<f.date)).at(-1);
+      const recentValue=past?(row?.actual??measured??'Unavailable'):(measured??recent?.actual??'Unavailable');
       const actualLog = observations?.length ? table(
         target === 'tackles' ? ['Match','Tackles won','Dribbled past'] : ['Match','Clearances and blocks'],
         observations.map(r => {
@@ -923,12 +912,12 @@
       return `<article class="mp-sheet mp-explorer mp-defense">
         ${this.nav()}${this.controls(selection)}
         <div class="mp-focus-band"><div><span class="mp-caption">${esc(selectedMatchLabel(f,base.fixtureLabel))} · ${esc(base.label)}</span>
-          <h3>${esc(p.name)}</h3>${valid(row?.value)?'<p>'+(past?'Pre-match forecast':'Forecast if selected')+'</p>':''}</div>
-          ${valid(row?.value)?'<div class="mp-big-count">'+fixed(row.value,2)+'<small> events</small></div>':''}</div>
-        ${bars && !valid(row?.value) && f?this.availability(f,[p],true):''}
-        ${bars?'<div class="mp-chart-head"><h4>Player comparison</h4><span class="mp-caption">Forecast · events</span></div><div class="mp-rank-chart">'+bars+'</div>':f?this.availability(f,g.items):empty('No player forecasts available.')}
-        ${recentValue!=null?'<div class="mp-def-detail">'+metrics([[past?'Match result':'Last observed',recentValue],['Match',past?f.date.slice(5)+' vs '+f.opponent:recent.date.slice(5)+' vs '+recent.opponent]])+'</div>':
-          lastEstimate?'<div class="mp-def-detail">'+metrics([['Previous forecast',fmt(lastEstimate.estimate,base.unit)],['Match',lastEstimate.date.slice(5)+' vs '+lastEstimate.opponent]])+'</div>':''}
+          <h3>${esc(p.name)}</h3><p>${valid(row?.value)?(past?'Pre-match forecast: ':'If selected: ')+(target==='tackles'?'tackles':'clearances and shot blocks'):'No forecast for this player in this match.'}</p></div>
+          <div class="mp-big-count">${fixed(row?.value,2)}<small> events</small></div></div>
+        <div class="mp-chart-head"><h4>Player comparison</h4><span class="mp-caption">Unit · events</span></div>
+        <div class="mp-legend"><span><i class="mp-key is-defense"></i>Match forecast</span></div>
+        <div class="mp-rank-chart">${bars || empty(f?noForecast(f):'No player forecasts available.')}</div>
+        <div class="mp-def-detail">${metrics([[past?'Match result':'Last observed',recentValue],['Match',past?f.date.slice(5)+' vs '+f.opponent:recent?recent.date.slice(5)+' vs '+recent.opponent:'Unavailable']])}</div>
         <button type="button" data-path class="mp-primary">Explore match history ${icon('arrow')}</button>
         ${base.markers ? disclosure(base.markers.label+' records',base.markers.rows.some(r=>r.id===p.id)?table(['Date','Opponent'],base.markers.rows.filter(r=>r.id===p.id).map(r=>[esc(r.date),esc(r.opponent)])):empty('No recorded events for this player.')) : ''}
         ${observations ? `<details class="mp-disclosure"><summary>Season observations · ${observations.length} matches ${icon('down')}</summary>${actualLog}</details>` : ''}
@@ -956,9 +945,8 @@
       const latest = base.observations?.[p.id] || [];
       const observed=latest.find(r=>sameGame(r,f));
       const actual=row?.actual??(valid(observed?.value)?signed(observed.value)+' goals':'Unavailable');
-      const records=latest.length?latest:[...(p.history||[])].reverse().filter(h=>valid(h.estimate)).map(h=>({...h,value:h.estimate}));
-      const obsMax = Math.max(1,...records.map(row=>row.value).filter(valid).map(Math.abs));
-      const logs = records.map(row=>`<div class="mp-save-line"><span>${esc(row.date.slice(5))} · ${esc(row.opponent)}</span>
+      const obsMax = Math.max(1,...latest.map(row=>Math.abs(row.value)).filter(valid));
+      const logs = latest.map(row=>`<div class="mp-save-line"><span>${esc(row.date.slice(5))} · ${esc(row.opponent)}</span>
         <div class="mp-diverge">${valid(row.value)?`<i class="${row.value<0?'is-left':'is-right'}"
            style="width:${Math.abs(row.value)/obsMax*48}%"></i>`:''}</div><b>${signed(row.value)}</b></div>`).join('');
       const meaning = !valid(row?.value)?'Awaiting a forecast for this match.':Math.abs(row.value)<0.005?'Expected goals conceded match the quality of shots on target.':
@@ -966,16 +954,16 @@
       return `<article class="mp-sheet mp-explorer mp-keeper">
         ${this.nav()}<div class="mp-goal-controls">${buttons}${this.controls(selection,false)}</div>
         <div class="mp-keeper-stage"><span class="mp-caption">${esc(selectedMatchLabel(f,base.fixtureLabel))} · Non-penalty goals prevented</span>
-          <div class="mp-keeper-title"><h3>${esc(p.name)}</h3>${valid(row?.value)?'<b>'+signed(row.value)+'<small> goals</small></b>':''}</div>${valid(row?.value)?'<p>'+esc(meaning)+'</p>':''}
+          <div class="mp-keeper-title"><h3>${esc(p.name)}</h3><b>${signed(row?.value)}<small> goals</small></b></div><p>${esc(meaning)}</p>
           ${interval || valid(row?.value) ? `<div class="mp-interval"><span></span>
             ${interval?`<i data-mark="keeper-interval" style="left:${pos(row.low)}%;width:${Math.max(0,pos(row.high)-pos(row.low))}%"></i>`:''}
             ${valid(row?.value)?`<b data-mark="keeper-point" style="left:${pos(row.value)}%"></b>`:''}</div>
           <div class="mp-scale"><span>−${radius} more conceded</span><span>0</span><span>more prevented +${radius}</span></div>
-          <div class="mp-interval-note"><i></i>80% empirical interval <strong>${interval ? signed(row.low)+' to '+signed(row.high) : 'Interval unavailable'}</strong></div>` : ''}
+          <div class="mp-interval-note"><i></i>80% empirical interval <strong>${interval ? signed(row.low)+' to '+signed(row.high) : 'Interval unavailable'}</strong></div>` : '<p class="mp-interval-note">No forecast interval is available for this match.</p>'}
           ${past?'<div class="mp-fixture-actual">Match result <b>'+esc(actual)+'</b></div>':''}
         </div>
-        ${f && !valid(row?.value)?this.availability(f,[p],rows.some(r=>valid(r.value))):''}
-        ${logs?'<div class="mp-chart-head"><h4>'+(latest.length?'Goals prevented by match':'Earlier goals-prevented forecasts')+'</h4><small>This season · '+records.length+' matches</small></div>'+logs:''}
+        <div class="mp-chart-head"><h4>Goals prevented by match</h4><small>This season · ${latest.length} matches</small></div>
+        ${logs || empty('No qualifying observations yet this season.')}
         <p class="mp-note">Positive values mean fewer goals conceded than expected from the shots faced. Negative values mean more goals conceded.</p>
         <button type="button" data-path class="mp-text-action">Explore forecast history ${icon('arrow')}</button>
       </article>`;
@@ -1236,5 +1224,5 @@
   for(const [tag,ctor] of Object.entries({matchday:Matchday,calibration:Calibration,archive:Archive,match:Match,players:Players,trajectory:Trajectory,form:Form,review:Review,discipline:Discipline,defense:Defense,keeper:Keeper,style:Style})){
     if(!customElements.get('mp-'+tag))customElements.define('mp-'+tag,ctor);
   }
-  window.RedadvUI=window.MatchPulseUI={icon,profile,showDialog,closeDialog,englishData,sameGame,preferredRoute};
+  window.RedadvUI=window.MatchPulseUI={icon,profile,showDialog,closeDialog,englishData,sameGame};
 })();
