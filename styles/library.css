@@ -1122,6 +1122,9 @@ body.kit {
 .art-compare { background:#fffcfd; color: var(--lfc-wine, #480a19); border:1px solid #dcc2c8; }.art-compare div { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:11px; }.art-compare i { height:6px; background: var(--lfc-red, #c8102e); }.art-compare div:last-child i { background: var(--lfc-teal, #00796f); }
 .feed-unavailable .featured { display:none; }
 .feed-loading .featured { display:none; }
+.card-edition { display:block; margin-top:9px; color:#5d3945; font-size:11px; font-weight:650; }
+.art .art-match-label { display:block; margin-bottom:4px; font-size:10px; font-weight:650; line-height:1.25; }
+.art-rank .art-match-label { color:var(--lfc-wine); }
 .art-ticket > .ticket-pending { color:#63565a; border-color:#b2a4a8; }
 .art-ticket > .ticket-miss { color: var(--lfc-red-deep, #a50d26); border-color:#d98494; }
 .art-ticket > .ticket-hit { color: var(--lfc-teal, #00796f); border-color:#59a8a0; }
