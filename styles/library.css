@@ -1125,3 +1125,22 @@ body.kit {
 .art-ticket > .ticket-pending { color:#63565a; border-color:#b2a4a8; }
 .art-ticket > .ticket-miss { color: var(--lfc-red-deep, #a50d26); border-color:#d98494; }
 .art-ticket > .ticket-hit { color: var(--lfc-teal, #00796f); border-color:#59a8a0; }
+
+/* Give the five workspace destinations their own row on narrow screens. */
+@media (max-width: 720px) {
+  .mast .mast-inner {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding-top: 8px;
+  }
+  .mast .mast-nav {
+    order: 1;
+    flex: 0 0 100%;
+    justify-content: space-between;
+    gap: 8px;
+    height: 36px;
+    margin-left: 0;
+  }
+  .mast-nav a { white-space: nowrap; }
+}

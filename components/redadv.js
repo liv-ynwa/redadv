@@ -196,7 +196,8 @@
     return copy(source,'');
   }
   class Widget extends HTMLElement {
-    set data(value) {this._data=englishData(value); this.reset(); if(this.isConnected) this.paint();}
+    ingest(value) {return this.getAttribute('locale') === 'zh' ? value : englishData(value);}
+    set data(value) {this._data=this.ingest(value); this.reset(); if(this.isConnected) this.paint();}
     get data() {return this._data;}
     updateLive(value) {
       const nested=this.querySelector('dialog[open]');
@@ -220,7 +221,7 @@
         }
         return;
       }
-      this._data=englishData(value);
+      this._data=this.ingest(value);
       this.paint();
     }
     reset() {}
@@ -229,10 +230,10 @@
       if (Object.prototype.hasOwnProperty.call(this, 'data')) {
         const pendingData = this.data;
         delete this.data;
-        this._data = englishData(pendingData);
+        this._data = this.ingest(pendingData);
         this.reset();
       }
-      if(!this._data && this.dataset.props) {try {this._data=englishData(JSON.parse(this.dataset.props));this.reset();} catch {}}
+      if(!this._data && this.dataset.props) {try {this._data=this.ingest(JSON.parse(this.dataset.props));this.reset();} catch {}}
       this.paint();
       if(this._bound) return;
       this._bound=true;
@@ -278,7 +279,7 @@
     return '<div class="mp-poster" aria-hidden="true"><div class="mp-poster-lines"></div><div class="mp-poster-top"><span class="mp-print-mark"></span>'+esc(d.leagueEn)+'</div><div class="mp-poster-type">MATCH<br>DAY<span>.</span></div><div class="mp-football"></div><div class="mp-print-foot"><strong>'+esc(d.homeCode)+'<i>/</i>'+esc(d.awayCode)+'</strong><span>'+esc(d.posterDate)+'</span></div></div>';
   }
   class Match extends Widget {
-    reset(){this.pickIndex=0;}
+    reset(){this.pickIndex=Number.isInteger(this.data?.initialPickIndex)?this.data.initialPickIndex:0;}
     view() {
       const d=this.data, picks=d.picks||[],i=picks[this.pickIndex]?this.pickIndex:0,p=picks[i];
       if(d.unscheduled)return empty('No upcoming fixture has been announced.');
@@ -425,7 +426,7 @@
     }
   }
   class Players extends FixtureWidget {
-    reset() { super.reset(); this.target = this.data?.target; this.modelKey=this.data?.modelKey; this.filter = 'all'; }
+    reset() { super.reset(); this.target = this.data?.target; this.modelKey=this.data?.modelKey; this.filter = ['all','extra','watch'].includes(this.data?.initialFilter)?this.data.initialFilter:'all'; }
 
     watchId(group, item) {
       return JSON.stringify([group.fixtureId, group.model, this.target, item.id]);
@@ -565,7 +566,7 @@
       this.modelKey = this.data?.modelKey;
       this.playerId = this.data?.playerId;
       this.point = null;
-      this.span = 'season';
+      this.span = ['season','five','all'].includes(this.data?.initialSpan)?this.data.initialSpan:'season';
     }
     connectedCallback() {
       super.connectedCallback();
@@ -821,7 +822,7 @@
     }
   }
   class Form extends Widget {
-    reset(){this.scope='single';}
+    reset(){this.scope=['single','three'].includes(this.data?.initialScope)?this.data.initialScope:'single';}
     view(){
       const scope=this.scope||'single', r=this.data[scope], styles=this.data.styles||[];
       const tabs=group('Forecast horizon',[['single','Single-match form'],['three','Three-match outlook']],scope,'scope');
@@ -860,7 +861,7 @@
       breakdown+scoreExplanation(host.scope,rows.length>0)+'</section>');
   }
   class Review extends Widget {
-    reset(){this.scope='single';}
+    reset(){this.scope=['single','three'].includes(this.data?.initialScope)?this.data.initialScope:'single';}
     view(){
       const scope=this.scope||'single',rows=this.data[scope]||[];
       const cells=rows.map((r,i)=>[esc(r.fixtures.map(f=>(f.kickoff||f.date).slice(5,10)+' vs '+f.opponent).join(' / '))+'<small>'+esc(r.scoreline||'')+'</small>',
@@ -987,7 +988,11 @@
   }
 
   class Style extends Widget {
-    reset() {this.mode='next';this.fixture=0;this.record=0;}
+    reset() {
+      this.mode=['next','history'].includes(this.data?.initialMode)?this.data.initialMode:'next';
+      this.fixture=Number.isInteger(this.data?.initialFixtureIndex)?this.data.initialFixtureIndex:0;
+      this.record=Number.isInteger(this.data?.initialRecordIndex)?this.data.initialRecordIndex:0;
+    }
     connectedCallback(){
       super.connectedCallback();
       this.onchange=e=>{
@@ -1028,7 +1033,7 @@
   }
 
   class Discipline extends Widget {
-    reset(){this.mode='next';}
+    reset(){this.mode=['next','history'].includes(this.data?.initialMode)?this.data.initialMode:'next';}
     view() {
       const d=this.data, mode=this.mode||'next', rows=d.history||[];
       const title=`<div class="mp-section-top"><div><small class="mp-caption">Discipline</small><h3>${esc(mode==='next'?d.fixture:'Completed matches')}</h3></div>
@@ -1080,7 +1085,13 @@
   }
 
   class Matchday extends Widget {
-    reset(){this.fixture=null;this.panel='score';this.eventModel=this.data?.defaultModel;this.target='scores';this.playerModel=null;}
+    reset(){
+      this.fixture=this.data?.initialFixture||null;
+      this.panel=['score','team','players'].includes(this.data?.initialPanel)?this.data.initialPanel:'score';
+      this.eventModel=this.data?.initialEventModel||this.data?.defaultModel;
+      this.target=this.data?.initialTarget||'scores';
+      this.playerModel=this.data?.initialPlayerModel||null;
+    }
     connectedCallback(){
       super.connectedCallback();
       this.onchange=e=>{
@@ -1172,7 +1183,7 @@
     return table(['Source','Forecast score','range','Confidence','Result'],rows.map(r=>[esc(sourceNames[r.kind]||r.kind),pointText(r.point),rangeText(r.window),pct(r.confidence),verdict(r.hit)]));
   }
   class Calibration extends Widget {
-    reset(){this.scope='single';}
+    reset(){this.scope=['single','three','style','discipline'].includes(this.data?.initialScope)?this.data.initialScope:'single';}
     view(){
       const choices=Object.entries(this.data).filter(([,r])=>r?.rows?.length || r?.events?.length || r?.reviews?.length);
       if(!choices.length)return empty('No records to review.');
@@ -1194,7 +1205,10 @@
     act(b){if(b.dataset.scope){this.scope=b.dataset.scope;this.refresh('data-scope',this.scope);}}
   }
   class Archive extends Widget {
-    reset(){this.scope='single';this.season=null;}
+    reset(){
+      this.scope=['single','three'].includes(this.data?.initialScope)?this.data.initialScope:'single';
+      this.season=Number.isInteger(this.data?.initialSeason)?this.data.initialSeason:null;
+    }
     connectedCallback(){super.connectedCallback();this.onchange=e=>{if(e.target.matches('[data-choice=season]')){this.season=Number(e.target.value);this.paint();this.querySelector('[data-choice=season]').focus({preventScroll:true});}};}
     view(){
       const rows=this.data[this.scope]||[], seasons=[...new Set(rows.map(r=>r.season))].sort((a,b)=>b-a);
