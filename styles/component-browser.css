@@ -1,0 +1,19 @@
+.reds-forecast-card { overflow:hidden; margin-bottom:10px; border:1px solid #ded4d4; border-radius:16px; background:white; }
+.reds-forecast-card header { display:flex; align-items:center; gap:18px; padding:18px 22px; background:#491323; color:white; }
+.reds-forecast-card header h2 { margin:0; font-size:1.5rem; color:inherit; }
+.reds-shirt,.reds-topic { display:grid; place-items:center; flex:none; width:64px; height:60px; background:#fff3ec; color:#61162b; font:bold 23px/1 system-ui; }
+.reds-shirt { clip-path:polygon(23% 5%,36% 0,43% 7%,57% 7%,64% 0,77% 5%,100% 25%,86% 43%,75% 36%,75% 96%,25% 96%,25% 36%,14% 43%,0 25%); }
+.reds-topic { border-radius:12px; }
+.reds-forecast-card dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; padding:16px 22px; margin:0; }
+.reds-forecast-card dt { font-size:.8rem; color:#64555a; }
+.reds-forecast-card dd { margin:3px 0 0; font-weight:650; }
+.reds-appearances { width:calc(100% - 32px); margin:16px; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.reds-appearances caption { text-align:left; font-weight:650; margin-bottom:6px; }
+.reds-appearances th,.reds-appearances td { text-align:left; border-bottom:1px solid #e5dcdd; padding:6px; }
+
+.component-categories { flex:0 0 100%; display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid #e3dadd; }
+.component-categories button { border:0; border-bottom:2px solid transparent; padding:8px 10px; background:transparent; font:inherit; font-size:14px; cursor:pointer; color:#65555a; }
+.component-categories button[aria-pressed=true] { color:var(--lfc-wine); border-bottom-color:currentColor; font-weight:700; }
+
+
+redadv-component-browser{display:block;margin:24px 0 32px}redadv-component-browser[hidden]{display:none}redadv-component-browser .filters{display:flex;flex-wrap:wrap;gap:10px}redadv-component-browser select{max-width:100%;padding:8px;border-radius:8px;font:inherit}redadv-component-browser article:not(:empty){margin-top:16px}redadv-component-browser>select{float:right;margin-bottom:8px}
