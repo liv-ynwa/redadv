@@ -17,3 +17,13 @@
 
 
 redadv-component-browser{display:block;margin:24px 0 32px}redadv-component-browser[hidden]{display:none}redadv-component-browser .filters{display:flex;flex-wrap:wrap;gap:10px}redadv-component-browser select{max-width:100%;padding:8px;border-radius:8px;font:inherit}redadv-component-browser article:not(:empty){margin-top:16px}redadv-component-browser>select{float:right;margin-bottom:8px}
+
+.ask-index { width:min(740px,calc(100% - 32px)); margin:0 auto; padding:clamp(58px,15vh,154px) 0 28px; }
+.ask-index > .intro { display:block; text-align:center; margin:0 0 30px; padding:0; }
+.ask-index > .intro h1 { font-size:clamp(38px,5vw,62px); }
+.ask-index > .intro .local-tag { display:none; }
+.ask-index redadv-component-browser { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:10px; background:white; border:1px solid #dfd6d6; border-radius:23px; padding:18px; box-shadow:0 12px 34px -16px #480a192a; }
+.ask-index redadv-component-browser .filters { grid-column:1/-1; grid-row:1; }
+.ask-index redadv-component-browser > select { grid-column:2; grid-row:2; justify-self:end; margin:0; }
+.ask-index redadv-component-browser article { grid-column:1/-1; min-width:0; margin:0; }
+.ask-index redadv-component-browser article:empty { display:none; }
