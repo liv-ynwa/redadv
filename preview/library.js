@@ -68,7 +68,6 @@
     document.querySelectorAll('[data-view]').forEach(a=>{
       if(a.dataset.view===(savedView?'saved':'all')) a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
     });
-    document.querySelector('redadv-component-browser').hidden=savedView;
     const base=gallery.filter(c=>!savedView||saved.has(c.key));
     const items=base.filter(c=>filter==='All'||c.group===filter);
     filterEl.innerHTML=filters.map(t=>'<button data-filter="'+t+'" type="button" aria-pressed="'+(filter===t)+'">'+t+'</button>').join('');
@@ -141,8 +140,6 @@
   route();
   return updated=>{
     gallery=catalog(updated);art=artwork(updated);
-    window.redadvPublishedComponents=gallery;
-    window.dispatchEvent(new Event("component-feed"));
     const hero=document.querySelector('.featured mp-match');
     hero.updateLive(updated?.match);
     const widget=dlg.querySelector(':scope > .dialog-body > .mp-widget');
